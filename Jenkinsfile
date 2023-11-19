@@ -12,42 +12,48 @@ pipeline {
   stages {
     stage('Cloning Git') {
       steps {
-        git 'https://github.com/talitz/spring-petclinic-jenkins-pipeline.git'
+        git 'https://github.com/samizouirech/spring-petclinic-jenkins-pipeline.git'
       }
     }
-    stage('Compile') {
-       steps {
-         sh 'mvn compile' //only compilation of the code
-       }
+    stage('Install Dependencies') {
+      steps {
+        // Maven to install dependencies
+        sh 'mvn clean install -DskipTests' // Skip tests in this stage
+      }
+    }
+    stage('Build') {
+      steps {
+        // Build the application
+        sh 'mvn package -DskipTests' // Skip tests in this stage
+      }
     }
     stage('Test') {
       steps {
-        sh '''
-        mvn clean install
-        ls
-        pwd
-        ''' 
-        //if the code is compiled, we test and package it in its distributable format; run IT and store in local repository
+        // Execute unit tests
+        sh 'mvn test'
       }
     }
     stage('Building Image') {
-      steps{
+      steps {
         script {
+          // Build Docker image
           dockerImage = docker.build registry + ":latest"
         }
       }
     }
     stage('Deploy Image') {
-      steps{
-         script {
-            docker.withRegistry( '', registryCredential ) {
+      steps {
+        script {
+          // Push the Docker image to the registry
+          docker.withRegistry('', registryCredential) {
             dockerImage.push()
           }
         }
       }
     }
     stage('Remove Unused docker image') {
-      steps{
+      steps {
+        // Remove the Docker image from local machine
         sh "docker rmi $registry:latest"
       }
     }
